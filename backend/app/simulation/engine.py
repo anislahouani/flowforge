@@ -1,5 +1,6 @@
 import random
 import simpy
+import statistics
 
 from backend.app.simulation.models import SimulationConfig
 
@@ -121,6 +122,71 @@ def run_simulation(config: SimulationConfig):
         "average_lead_time_minutes": round(average_lead_time, 2),
         "average_picking_wait_minutes": round(average_picking_wait, 2),
         "average_packing_wait_minutes": round(average_packing_wait, 2),
-        "bottleneck": bottleneck,
-        "orders": completed_orders
+        "bottleneck": bottleneck
+    }
+
+def run_replications(
+    config: SimulationConfig,
+    replications: int,
+):
+    results = []
+
+    for replication in range(replications):
+        replication_config = config.model_copy(
+            update={
+                "random_seed": config.random_seed + replication
+            }
+        )
+
+        results.append(
+            run_simulation(replication_config)
+        )
+
+    average_throughput = sum(
+        result["throughput_per_hour"] for result in results
+    ) / replications
+
+    average_lead_time = sum(
+        result["average_lead_time_minutes"] for result in results
+    ) / replications
+
+    average_picking_wait = sum(
+        result["average_picking_wait_minutes"] for result in results
+    ) / replications
+
+    average_packing_wait = sum(
+        result["average_packing_wait_minutes"] for result in results
+    ) / replications
+
+    throughputs = [
+    result["throughput_per_hour"] for result in results
+    ]
+
+    lead_times = [
+        result["average_lead_time_minutes"] for result in results
+    ]
+
+    throughput_std_dev = statistics.stdev(throughputs)
+    lead_time_std_dev = statistics.stdev(lead_times)
+
+    return {
+        "replications": replications,
+        "average_throughput_per_hour": round(
+            average_throughput, 2
+        ),
+        "average_lead_time_minutes": round(
+            average_lead_time, 2
+        ),
+        "average_picking_wait_minutes": round(
+            average_picking_wait, 2
+        ),
+        "average_packing_wait_minutes": round(
+            average_packing_wait, 2
+        ),
+        "throughput_std_dev": round(
+            throughput_std_dev, 2
+        ),
+        "lead_time_std_dev_minutes": round(
+            lead_time_std_dev, 2
+        ),
     }

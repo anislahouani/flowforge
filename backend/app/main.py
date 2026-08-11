@@ -1,9 +1,16 @@
 from fastapi import FastAPI
 from backend.app.simulation.models import (
-    SimulationConfig,
+    ReplicationRequest,
+    ReplicationResult,
     ScenarioComparisonRequest,
+    ScenarioComparisonResult,
+    SimulationConfig,
+    SimulationResult,
 )
-from backend.app.simulation.engine import run_simulation
+from backend.app.simulation.engine import (
+    run_replications,
+    run_simulation,
+)
 
 app = FastAPI(title="FlowForge API", version="0.1.0")
 
@@ -19,11 +26,17 @@ def validate_simulation(config: SimulationConfig):
         "config": config
     }
 
-@app.post("/simulation/run")
+@app.post(
+    "/simulation/run",
+    response_model=SimulationResult,
+)
 def run(config: SimulationConfig):
     return run_simulation(config)
 
-@app.post("/simulation/compare")
+@app.post(
+    "/simulation/compare",
+    response_model=ScenarioComparisonResult,
+)
 def compare_simulations(request: ScenarioComparisonRequest):
     baseline_result = run_simulation(request.baseline)
     candidate_result = run_simulation(request.candidate)
@@ -54,3 +67,14 @@ def compare_simulations(request: ScenarioComparisonRequest):
             ),
         },
     }
+
+@app.post(
+    "/simulation/replications",
+    response_model=ReplicationResult,
+)
+def run_multiple_replications(request: ReplicationRequest):
+    return run_replications(
+        request.config,
+        request.replications,
+    )
+
