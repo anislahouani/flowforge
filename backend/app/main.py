@@ -6,8 +6,10 @@ from backend.app.simulation.models import (
     ScenarioComparisonResult,
     SimulationConfig,
     SimulationResult,
+    StatisticalComparisonRequest,
 )
 from backend.app.simulation.engine import (
+    compare_replications,
     run_replications,
     run_simulation,
 )
@@ -78,3 +80,13 @@ def run_multiple_replications(request: ReplicationRequest):
         request.replications,
     )
 
+@app.post("/simulation/compare-replications")
+def compare_multiple_replications(
+    request: StatisticalComparisonRequest,
+):
+    return compare_replications(
+        request.baseline,
+        request.candidate,
+        request.replications,
+        request.max_cost_per_additional_order,
+    )

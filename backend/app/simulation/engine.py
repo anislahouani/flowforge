@@ -116,13 +116,19 @@ def run_simulation(config: SimulationConfig):
     else:
         bottleneck = "packing"
 
+    operating_cost = config.simulation_hours * (
+    config.picking_stations * config.picking_station_cost_per_hour
+    + config.packing_stations * config.packing_station_cost_per_hour
+    )
+
     return {
         "completed_orders": len(completed_orders),
         "throughput_per_hour": round(throughput_per_hour, 2),
         "average_lead_time_minutes": round(average_lead_time, 2),
         "average_picking_wait_minutes": round(average_picking_wait, 2),
         "average_packing_wait_minutes": round(average_packing_wait, 2),
-        "bottleneck": bottleneck
+        "bottleneck": bottleneck,
+        "operating_cost": round(operating_cost, 2),
     }
 
 def run_replications(
@@ -189,4 +195,141 @@ def run_replications(
         "lead_time_std_dev_minutes": round(
             lead_time_std_dev, 2
         ),
+    }
+
+def compare_replications(
+    baseline_config: SimulationConfig,
+    candidate_config: SimulationConfig,
+    replications: int,
+    max_cost_per_additional_order: float,
+):
+    baseline_result = run_replications(
+        baseline_config,
+        replications,
+    )
+
+    candidate_result = run_replications(
+        candidate_config,
+        replications,
+    )
+
+    throughput_gain = (
+    candidate_result["average_throughput_per_hour"]
+    - baseline_result["average_throughput_per_hour"]
+    )
+
+    lead_time_reduction = (
+        baseline_result["average_lead_time_minutes"]
+        - candidate_result["average_lead_time_minutes"]
+    )
+
+    packing_wait_reduction = (
+        baseline_result["average_packing_wait_minutes"]
+        - candidate_result["average_packing_wait_minutes"]
+    )
+
+    
+
+    baseline_operating_cost = (
+    baseline_config.simulation_hours
+    * (
+        baseline_config.picking_stations
+        * baseline_config.picking_station_cost_per_hour
+        + baseline_config.packing_stations
+        * baseline_config.packing_station_cost_per_hour
+    )
+)
+
+    candidate_operating_cost = (
+        candidate_config.simulation_hours
+        * (
+            candidate_config.picking_stations
+            * candidate_config.picking_station_cost_per_hour
+            + candidate_config.packing_stations
+            * candidate_config.packing_station_cost_per_hour
+        )
+    )
+
+    additional_cost = (
+        candidate_operating_cost - baseline_operating_cost
+    )
+
+    additional_completed_orders = (
+        candidate_result["average_throughput_per_hour"]
+        - baseline_result["average_throughput_per_hour"]
+    ) * baseline_config.simulation_hours
+
+    if additional_completed_orders > 0:
+        cost_per_additional_order = (
+            additional_cost / additional_completed_orders
+        )
+    else:
+        cost_per_additional_order = None
+
+    if cost_per_additional_order is None:
+        recommendation = "baseline"
+    elif (
+        throughput_gain > 0
+        and lead_time_reduction > 0
+        and cost_per_additional_order <= max_cost_per_additional_order
+    ):
+        recommendation = "candidate"
+    elif (
+        throughput_gain > 0
+        or lead_time_reduction > 0
+    ):
+        recommendation = "tradeoff"
+    else:
+        recommendation = "baseline"
+
+    return {
+        "baseline": baseline_result,
+        "candidate": candidate_result,
+        "improvement": {
+            "average_throughput_per_hour": round(
+                candidate_result["average_throughput_per_hour"]
+                - baseline_result["average_throughput_per_hour"],
+                2,
+            ),
+            "average_lead_time_minutes": round(
+                baseline_result["average_lead_time_minutes"]
+                - candidate_result["average_lead_time_minutes"],
+                2,
+            ),
+            "average_picking_wait_minutes": round(
+                baseline_result["average_picking_wait_minutes"]
+                - candidate_result["average_picking_wait_minutes"],
+                2,
+            ),
+            "average_packing_wait_minutes": round(
+                baseline_result["average_packing_wait_minutes"]
+                - candidate_result["average_packing_wait_minutes"],
+                2,
+            ),
+        },
+        "recommendation": recommendation,
+        "summary": {
+            "throughput_gain_per_hour": round(throughput_gain, 2),
+            "lead_time_reduction_minutes": round(lead_time_reduction, 2),
+            "packing_wait_reduction_minutes": round(
+                packing_wait_reduction,
+                2,
+            ),
+            "baseline_operating_cost": round(
+                baseline_operating_cost, 2
+            ),
+            "candidate_operating_cost": round(
+                candidate_operating_cost, 2
+            ),
+            "additional_cost": round(additional_cost, 2),
+            "cost_per_additional_order": (
+                round(cost_per_additional_order, 2)
+                if cost_per_additional_order is not None
+                else None
+            ),
+            "max_cost_per_additional_order": round(
+                max_cost_per_additional_order,
+                2,
+            ),
+        },
     }
