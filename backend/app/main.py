@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from backend.app.simulation.models import (
+    OptimizationRequest,
     ReplicationRequest,
     ReplicationResult,
     ScenarioComparisonRequest,
@@ -10,6 +11,7 @@ from backend.app.simulation.models import (
 )
 from backend.app.simulation.engine import (
     compare_replications,
+    optimize_packing_capacity,
     run_replications,
     run_simulation,
 )
@@ -87,6 +89,18 @@ def compare_multiple_replications(
     return compare_replications(
         request.baseline,
         request.candidate,
+        request.replications,
+        request.max_cost_per_additional_order,
+    )
+
+@app.post("/simulation/optimize-packing")
+def optimize_packing(
+    request: OptimizationRequest,
+):
+    return optimize_packing_capacity(
+        request.base_config,
+        request.min_packing_stations,
+        request.max_packing_stations,
         request.replications,
         request.max_cost_per_additional_order,
     )

@@ -63,3 +63,16 @@ class StatisticalComparisonRequest(BaseModel):
         default=100,
         gt=0
     )
+
+class OptimizationRequest(BaseModel):
+    base_config: SimulationConfig
+
+    min_packing_stations: int = Field(default=1, ge=1)
+    max_packing_stations: int = Field(default=6, ge=1)
+
+    replications: int = Field(default=10, ge=2, le=100)
+
+    max_cost_per_additional_order: float = Field(
+        default=100,
+        gt=0
+    )

@@ -333,3 +333,138 @@ def compare_replications(
             ),
         },
     }
+
+def optimize_packing_capacity(
+    base_config: SimulationConfig,
+    min_packing_stations: int,
+    max_packing_stations: int,
+    replications: int,
+    max_cost_per_additional_order: float,
+):
+    scenarios = []
+
+    baseline_config = base_config.model_copy(
+        update={
+            "packing_stations": min_packing_stations
+        }
+    )
+
+    baseline_result = run_replications(
+        baseline_config,
+        replications,
+    )
+
+    baseline_cost = baseline_config.simulation_hours * (
+        baseline_config.picking_stations
+        * baseline_config.picking_station_cost_per_hour
+        + baseline_config.packing_stations
+        * baseline_config.packing_station_cost_per_hour
+    )
+
+    best_scenario = None
+
+    for packing_stations in range(
+        min_packing_stations,
+        max_packing_stations + 1,
+    ):
+        scenario_config = base_config.model_copy(
+            update={
+                "packing_stations": packing_stations
+            }
+        )
+
+        result = run_replications(
+            scenario_config,
+            replications,
+        )
+
+        operating_cost = scenario_config.simulation_hours * (
+            scenario_config.picking_stations
+            * scenario_config.picking_station_cost_per_hour
+            + scenario_config.packing_stations
+            * scenario_config.packing_station_cost_per_hour
+        )
+
+        throughput_gain = (
+            result["average_throughput_per_hour"]
+            - baseline_result["average_throughput_per_hour"]
+        )
+
+        additional_cost = operating_cost - baseline_cost
+
+        additional_completed_orders = (
+            throughput_gain
+            * scenario_config.simulation_hours
+        )
+
+        if additional_completed_orders > 0:
+            cost_per_additional_order = (
+                additional_cost
+                / additional_completed_orders
+            )
+        else:
+            cost_per_additional_order = None
+
+        scenario = {
+            "packing_stations": packing_stations,
+            "average_throughput_per_hour": result[
+                "average_throughput_per_hour"
+            ],
+            "average_lead_time_minutes": result[
+                "average_lead_time_minutes"
+            ],
+            "average_packing_wait_minutes": result[
+                "average_packing_wait_minutes"
+            ],
+            "operating_cost": round(
+                operating_cost,
+                2,
+            ),
+            "cost_per_additional_order": (
+                round(cost_per_additional_order, 2)
+                if cost_per_additional_order is not None
+                else None
+            ),
+        }
+
+        scenarios.append(scenario)
+
+    economically_acceptable_scenarios = [
+    scenario
+    for scenario in scenarios
+    if (
+        scenario["cost_per_additional_order"] is not None
+        and scenario["cost_per_additional_order"]
+        <= max_cost_per_additional_order
+    )
+    ]
+
+    if economically_acceptable_scenarios:
+        best_lead_time = min(
+            scenario["average_lead_time_minutes"]
+            for scenario in economically_acceptable_scenarios
+        )
+
+        performance_tolerance = 0.5
+
+        near_optimal_scenarios = [
+            scenario
+            for scenario in economically_acceptable_scenarios
+            if (
+                scenario["average_lead_time_minutes"]
+                <= best_lead_time + performance_tolerance
+            )
+        ]
+
+        best_scenario = min(
+            near_optimal_scenarios,
+            key=lambda scenario: scenario["operating_cost"],
+        )
+    else:
+        best_scenario = None
+
+    return {
+        "baseline_packing_stations": min_packing_stations,
+        "recommended": best_scenario,
+        "scenarios": scenarios,
+    }
