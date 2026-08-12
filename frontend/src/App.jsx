@@ -595,7 +595,15 @@ function App() {
 
                   <div className="optimization-chart">
                     <ResponsiveContainer width="100%" height={320}>
-                      <LineChart data={optimizationChartData}>
+                        <LineChart
+                          data={optimizationChartData}
+                          margin={{
+                            top: 30,
+                            right: 40,
+                            left: 20,
+                            bottom: 30,
+                          }}
+                        >
                         <CartesianGrid
                           strokeDasharray="3 3"
                           vertical={false}
@@ -603,10 +611,11 @@ function App() {
 
                         <XAxis
                           dataKey="stations"
+                          height={65}
                           label={{
                             value: "Packing stations",
                             position: "insideBottom",
-                            offset: -4,
+                            offset: 0,
                           }}
                         />
 
@@ -630,7 +639,13 @@ function App() {
                         />
 
                         <Tooltip />
-                        <Legend />
+                        <Legend
+                          verticalAlign="bottom"
+                          align="center"
+                          wrapperStyle={{
+                            paddingTop: "24px",
+                          }}
+                        />
 
                         <Line
                           yAxisId="left"
