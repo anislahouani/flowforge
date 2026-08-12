@@ -1,4 +1,13 @@
 import { useState } from "react"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts"
 
 function App() {
   const [config, setConfig] = useState({
@@ -47,6 +56,19 @@ function App() {
       setLoading(false)
     }
   }
+
+  const waitTimeData = result
+    ? [
+        {
+          stage: "Picking",
+          minutes: result.average_picking_wait_minutes,
+        },
+        {
+          stage: "Packing",
+          minutes: result.average_packing_wait_minutes,
+        },
+      ]
+    : []
 
   return (
     <div className="app">
@@ -225,35 +247,67 @@ function App() {
             )}
 
             {result && (
-              <div className="result-summary">
-                <div>
-                  <span>Status</span>
-                  <strong>
-                    {result.bottleneck === "none"
-                      ? "Balanced"
-                      : `${result.bottleneck} bottleneck`}
-                  </strong>
+              <>
+                <div className="result-summary">
+                  <div>
+                    <span>Status</span>
+                    <strong>
+                      {result.bottleneck === "none"
+                        ? "Balanced"
+                        : `${result.bottleneck} bottleneck`}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Completed orders</span>
+                    <strong>{result.completed_orders}</strong>
+                  </div>
+
+                  <div>
+                    <span>Picking wait</span>
+                    <strong>
+                      {result.average_picking_wait_minutes} min
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Packing wait</span>
+                    <strong>
+                      {result.average_packing_wait_minutes} min
+                    </strong>
+                  </div>
                 </div>
 
-                <div>
-                  <span>Completed orders</span>
-                  <strong>{result.completed_orders}</strong>
-                </div>
+                <div className="chart-section">
+                  <div className="chart-header">
+                    <div>
+                      <h3>Queue waiting time</h3>
+                      <p>
+                        Average waiting time by warehouse stage.
+                      </p>
+                    </div>
+                  </div>
 
-                <div>
-                  <span>Picking wait</span>
-                  <strong>
-                    {result.average_picking_wait_minutes} min
-                  </strong>
+                  <div className="chart-container">
+                    <ResponsiveContainer width="100%" height={240}>
+                      <BarChart data={waitTimeData}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          vertical={false}
+                        />
+                        <XAxis dataKey="stage" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar
+                          dataKey="minutes"
+                          fill="#111827"
+                          radius={[6, 6, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
-
-                <div>
-                  <span>Packing wait</span>
-                  <strong>
-                    {result.average_packing_wait_minutes} min
-                  </strong>
-                </div>
-              </div>
+              </>
             )}
           </div>
         </section>
